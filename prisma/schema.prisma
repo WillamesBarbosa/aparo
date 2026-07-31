@@ -7,121 +7,134 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum JobStatus {
-  IDENTIFIED
-  APPLIED
-  CONTACTED
-  INTERVIEWING
-  OFFER
-  HIRED
-  REJECTED
-  GHOSTED
-}
-
-enum ResponseStatus {
+enum AppointmentStatus {
   PENDING
-  REPLIED
-  NO_RESPONSE
-  BOUNCED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
 }
 
-enum FollowUpChannel {
-  EMAIL
-  LINKEDIN
-  WHATSAPP
-  OTHER
-}
-
-enum FollowUpStatus {
+enum NotificationStatus {
+  SCHEDULED
   SENT
-  DELIVERED
-  REPLIED
-  NO_RESPONSE
+  FAILED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 model User {
-  id String @id @default(uuid())
-  name String
-  email String @unique
-  passwordHash String @map("password_hash")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  jobs  Job[]
-  messageTemplates MessageTemplate[]
+  barbershop Barbershop?
 
   @@map("users")
 }
 
-model Job {
-  id String @id @default(uuid())
-  userId String @map("user_id")
-  company String
-  position String
-  status JobStatus @default(IDENTIFIED)
-  source String?
-  url String?
-  notes String?
-  appliedAt DateTime? @map("applied_at")
-  lastActivityAt DateTime @default(now()) @map("last_activity_at")
-  deletedAt DateTime? @map("deleted_at")
+model Barbershop {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  name      String
+  phone     String?
+  address   String?
+  logoUrl   String?  @map("logo_url")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
-  contacts Contact[]
-  followUps FollowUp[]
+  user         User          @relation(fields: [userId], references: [id])
+  services     Service[]
+  schedules    Schedule[]
+  appointments Appointment[]
 
-  @@map("jobs")
+  @@map("barbershops")
 }
 
-model Contact {
-  id String @id @default(uuid())
-  jobId String @map("job_id")
-  name String 
-  role String?
-  linkedinUrl String? @map("linkedin_url")
-  email String?
-  responseStatus ResponseStatus @default(PENDING) @map("response_status")
+model Service {
+  id           String   @id @default(uuid())
+  barbershopId String   @map("barbershop_id")
+  name         String
+  price        Decimal
+  durationMins Int      @default(45) @map("duration_mins")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
+  appointments Appointment[]
+
+  @@map("services")
+}
+
+model Schedule {
+  id           String    @id @default(uuid())
+  barbershopId String    @map("barbershop_id")
+  dayOfWeek    DayOfWeek @map("day_of_week")
+  openTime     String    @map("open_time")
+  closeTime    String    @map("close_time")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([barbershopId, dayOfWeek])
+  @@map("schedules")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  userId    String?  @unique @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  job Job @relation(fields: [jobId], references: [id])
-  followUps FollowUp[]
+  appointments Appointment[]
 
-  @@map("contacts")
+  @@map("customers")
 }
 
-model MessageTemplate {
-  id String @id @default(uuid())
-  userId String @map("user_id")
-  name String
-  targetRole String? @map("target_role")
-  body String 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+model Appointment {
+  id           String            @id @default(uuid())
+  barbershopId String            @map("barbershop_id")
+  serviceId    String            @map("service_id")
+  customerId   String            @map("customer_id")
+  date         DateTime
+  status       AppointmentStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  barbershop    Barbershop     @relation(fields: [barbershopId], references: [id])
+  service       Service        @relation(fields: [serviceId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  notifications Notification[]
 
-  followUps FollowUp[]
-  @@map("message_templates")
+  @@map("appointments")
 }
 
-model FollowUp {
-  id String @id @default(uuid())
-  jobId String @map("job_id")
-  contactId String? @map("contact_id")
-  templateId String? @map("template_id")
-  channel FollowUpChannel
-  status FollowUpStatus @default(SENT)
-  notes String?
-  sentAt DateTime @map("sent_at")
-  respondedAt DateTime? @map("responded_at")
-  createdAt DateTime @default(now()) @map("created_at")
+model Notification {
+  id            String             @id @default(uuid())
+  appointmentId String             @map("appointment_id")
+  channel       String
+  status        NotificationStatus @default(SCHEDULED)
+  scheduledAt   DateTime           @map("scheduled_at")
+  sentAt        DateTime?          @map("sent_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
 
-  job      Job              @relation(fields: [jobId], references: [id])
-  contact  Contact?         @relation(fields: [contactId], references: [id])
-  template MessageTemplate? @relation(fields: [templateId], references: [id])
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
 
-  @@map("follow_ups")
+  @@map("notifications")
 }
