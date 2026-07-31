@@ -1,0 +1,141 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationStatus {
+  SCHEDULED
+  SENT
+  FAILED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  barbershop Barbershop?
+
+  @@map("users")
+}
+
+model Barbershop {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  name      String
+  phone     String?
+  address   String?
+  logoUrl   String?  @map("logo_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id])
+  services     Service[]
+  schedules    Schedule[]
+  appointments Appointment[]
+
+  @@map("barbershops")
+}
+
+model Service {
+  id            String   @id @default(uuid())
+  barbershopId  String   @map("barbershop_id")
+  name          String
+  price         Decimal
+  durationMins  Int      @default(45) @map("duration_mins")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  barbershop   Barbershop    @relation(fields: [barbershopId], references: [id])
+  appointments Appointment[]
+
+  @@map("services")
+}
+
+model Schedule {
+  id           String    @id @default(uuid())
+  barbershopId String    @map("barbershop_id")
+  dayOfWeek    DayOfWeek @map("day_of_week")
+  openTime     String    @map("open_time")
+  closeTime    String    @map("close_time")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  barbershop Barbershop @relation(fields: [barbershopId], references: [id])
+
+  @@unique([barbershopId, dayOfWeek])
+  @@map("schedules")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  userId    String?  @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  appointments Appointment[]
+
+  @@map("customers")
+}
+
+model Appointment {
+  id           String            @id @default(uuid())
+  barbershopId String            @map("barbershop_id")
+  serviceId    String            @map("service_id")
+  customerId   String            @map("customer_id")
+  date         DateTime
+  status       AppointmentStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  barbershop    Barbershop     @relation(fields: [barbershopId], references: [id])
+  service       Service        @relation(fields: [serviceId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  notifications Notification[]
+
+  @@map("appointments")
+}
+
+model Notification {
+  id            String             @id @default(uuid())
+  appointmentId String             @map("appointment_id")
+  channel       String
+  status        NotificationStatus @default(SCHEDULED)
+  scheduledAt   DateTime           @map("scheduled_at")
+  sentAt        DateTime?          @map("sent_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@map("notifications")
+}
