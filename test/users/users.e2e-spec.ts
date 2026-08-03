@@ -32,6 +32,7 @@ describe('Users (e2e)', () => {
   });
 
   afterEach(async () => {
+    await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
   });
 
@@ -39,7 +40,11 @@ describe('Users (e2e)', () => {
     test('Should create users should create a user and not return the passwordHash', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/users')
-        .send({ name: 'Will', email: 'will@email.com', password: '123456' })
+        .send({
+          name: 'Will',
+          email: 'will@email.com',
+          password: '123456',
+        })
         .expect(201);
 
       expect(response.body).toHaveProperty('id');

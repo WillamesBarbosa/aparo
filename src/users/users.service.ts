@@ -4,9 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from 'src/auth/dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { sanitize } from 'src/common/utils/sanitize';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -23,7 +23,7 @@ export class UsersService {
     return sanitize(user, ['passwordHash']);
   }
 
-  async create(dto: RegisterDto) {
+  async create(dto: CreateUserDto) {
     const userAlreadyExisting = await this.findByEmail(dto.email);
     if (userAlreadyExisting)
       throw new ConflictException('Email already registered');

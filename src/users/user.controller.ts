@@ -8,14 +8,14 @@ import {
   Put,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { RegisterDto } from 'src/auth/dto/register.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() dto: RegisterDto) {
+  create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
 

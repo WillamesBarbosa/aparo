@@ -25,6 +25,7 @@ describe('Auth (e2e)', () => {
 
     await app.init();
     prisma = module.get<PrismaService>(PrismaService);
+    await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
   });
 
@@ -33,6 +34,7 @@ describe('Auth (e2e)', () => {
   });
 
   afterEach(async () => {
+    await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
   });
 
@@ -40,7 +42,12 @@ describe('Auth (e2e)', () => {
     test('Should register user and return tokens', async () => {
       const response = await request(app.getHttpServer())
         .post('/api/auth/register')
-        .send({ name: 'Will', email: 'will@email.com', password: '123456' })
+        .send({
+          name: 'Will',
+          email: 'will@email.com',
+          password: '123456',
+          barbershopName: 'Barbearia do Will',
+        })
         .expect(201);
       const body = response.body as {
         user: { id: string; email: string };
@@ -54,13 +61,21 @@ describe('Auth (e2e)', () => {
     });
 
     test('Should return 409 if email already exists', async () => {
-      await request(app.getHttpServer())
-        .post('/api/auth/register')
-        .send({ name: 'Will', email: 'will@email.com', password: '123456' });
+      await request(app.getHttpServer()).post('/api/auth/register').send({
+        name: 'Will',
+        email: 'will@email.com',
+        password: '123456',
+        barbershopName: 'Barbearia do Will',
+      });
 
       await request(app.getHttpServer())
         .post('/api/auth/register')
-        .send({ name: 'Will', email: 'will@email.com', password: '123456' })
+        .send({
+          name: 'Will',
+          email: 'will@email.com',
+          password: '123456',
+          barbershopName: 'Barbearia do Will',
+        })
         .expect(409);
     });
 
@@ -74,9 +89,12 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/auth/login', () => {
     test('Should login and return tokens', async () => {
-      await request(app.getHttpServer())
-        .post('/api/auth/register')
-        .send({ name: 'Will', email: 'will@email.com', password: '123456' });
+      await request(app.getHttpServer()).post('/api/auth/register').send({
+        name: 'Will',
+        email: 'will@email.com',
+        password: '123456',
+        barbershopName: 'Barbearia do Will',
+      });
 
       const response = await request(app.getHttpServer())
         .post('/api/auth/login')
