@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import { BarbershopsService } from '../barbershops/barbershops.service';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -16,15 +17,20 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly barbershopsService: BarbershopsService,
   ) {}
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     const user = await this.usersService.create(dto);
 
+    const barbershop = await this.barbershopsService.create(user.id, {
+      name: dto.barbershopName,
+      phone: dto.barbershopPhone,
+    });
     const tokens = this.authService.login(user.id, user.email);
 
-    return { user, tokens };
+    return { user, barbershop, tokens };
   }
 
   @Post('login')
