@@ -82,7 +82,7 @@ describe('UserService', () => {
       const result = await service.update('1', { name: 'edu' });
 
       expect(result).toHaveProperty('name', 'edu');
-      expect(result).not.toHaveProperty('passwordHash'); // faltou isso
+      expect(result).not.toHaveProperty('passwordHash');
     });
   });
 
@@ -102,7 +102,7 @@ describe('UserService', () => {
       const result = await service.delete('1');
 
       expect(result).toHaveProperty('id', '1');
-      expect(result).not.toHaveProperty('passwordHash'); // faltou isso
+      expect(result).not.toHaveProperty('passwordHash');
     });
   });
 });
