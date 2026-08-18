@@ -8,10 +8,10 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { LocalAuthGuard } from 'src/auth/guards/local-auth.guard';
 import { BarbershopsService } from './barbershops.service';
 import { CreateBarbershopDto } from './dto/create-barbershop.dto';
 import { UpdateBarbershopDto } from './dto/update-barbershop.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth-guard';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -22,11 +22,11 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('barbershops')
-@UseGuards(LocalAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class BarbershopsController {
   constructor(private readonly barbershopsService: BarbershopsService) {}
 
-  @Post('me')
+  @Post()
   create(
     @Request() req: AuthenticatedRequest,
     @Body() dto: CreateBarbershopDto,
@@ -34,7 +34,7 @@ export class BarbershopsController {
     return this.barbershopsService.create(req.user.id, dto);
   }
 
-  @Get()
+  @Get('me')
   findMine(@Request() req: AuthenticatedRequest) {
     return this.barbershopsService.findById(req.user.id);
   }
@@ -47,7 +47,7 @@ export class BarbershopsController {
     return this.barbershopsService.update(req.user.id, dto);
   }
 
-  @Delete()
+  @Delete('me')
   delete(@Request() req: AuthenticatedRequest) {
     return this.barbershopsService.delete(req.user.id);
   }
