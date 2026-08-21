@@ -82,7 +82,7 @@ describe('Barbershop', () => {
     });
   });
 
-  describe('POST /api/barbershop/me', () => {
+  describe('POST /api/barbershop', () => {
     test('Should return barbershop created', async () => {
       await request(app.getHttpServer()).post('/api/users').send({
         name: 'Will',
