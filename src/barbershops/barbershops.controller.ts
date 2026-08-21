@@ -12,14 +12,7 @@ import { BarbershopsService } from './barbershops.service';
 import { CreateBarbershopDto } from './dto/create-barbershop.dto';
 import { UpdateBarbershopDto } from './dto/update-barbershop.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth-guard';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
-}
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.interface';
 
 @Controller('barbershops')
 @UseGuards(JwtAuthGuard)
