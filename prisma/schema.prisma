@@ -96,7 +96,7 @@ model Schedule {
 model Customer {
   id        String   @id @default(uuid())
   name      String
-  phone     String
+  phone     String   @unique
   userId    String?  @unique @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
