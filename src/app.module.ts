@@ -9,6 +9,8 @@ import { ServicesModule } from './services/services.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { CustomersModule } from './customer/customers.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -30,6 +32,23 @@ import { AppointmentsModule } from './appointments/appointments.module';
               : 'info',
       },
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'login',
+        ttl: 60000,
+        limit: 10,
+      },
+      {
+        name: 'short',
+        ttl: 1000,
+        limit: 10,
+      },
+      {
+        name: 'medium',
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     PrismaModule,
     UsersModule,
     AuthModule,
@@ -38,6 +57,12 @@ import { AppointmentsModule } from './appointments/appointments.module';
     SchedulesModule,
     CustomersModule,
     AppointmentsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

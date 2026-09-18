@@ -4,6 +4,7 @@ import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { BarbershopsService } from '../barbershops/barbershops.service';
+import { Throttle } from '@nestjs/throttler';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -33,6 +34,7 @@ export class AuthController {
     return { user, barbershop, tokens };
   }
 
+  @Throttle({ login: { ttl: 60000, limit: 10 } })
   @Post('login')
   @UseGuards(LocalAuthGuard)
   login(@Request() req: AuthenticatedRequest) {
