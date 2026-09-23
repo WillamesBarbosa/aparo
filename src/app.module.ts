@@ -11,6 +11,7 @@ import { CustomersModule } from './customer/customers.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { APP_GUARD } from '@nestjs/core';
     SchedulesModule,
     CustomersModule,
     AppointmentsModule,
+    RedisModule,
   ],
   providers: [
     {

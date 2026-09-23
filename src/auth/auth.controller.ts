@@ -1,4 +1,11 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
@@ -29,9 +36,16 @@ export class AuthController {
       name: dto.barbershopName,
       phone: dto.barbershopPhone,
     });
-    const tokens = this.authService.login(user.id, user.email);
-
+    const tokens = await this.authService.login(user.id, user.email);
     return { user, barbershop, tokens };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refresh(@Body() body: { refreshToken: string }) {
+    const response = await this.authService.refresh(body.refreshToken);
+    console.log('controller', response);
+    return response;
   }
 
   @Throttle({ login: { ttl: 60000, limit: 10 } })

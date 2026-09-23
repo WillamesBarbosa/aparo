@@ -49,6 +49,7 @@ describe('Auth (e2e)', () => {
           barbershopName: 'Barbearia do Will',
         })
         .expect(201);
+
       const body = response.body as {
         user: { id: string; email: string };
         tokens: { accessToken: string; refreshToken: string };
@@ -115,6 +116,47 @@ describe('Auth (e2e)', () => {
         .post('/api/auth/login')
         .send({ email: 'will@email.com', password: 'wrong-password' })
         .expect(401);
+    });
+  });
+
+  describe('POST /api/auth/refresh', () => {
+    test('Should return 401 if credentials are invalid', async () => {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .send({
+          refreshToken:
+            'Refresh eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTFkMzZkZi01YjhlLTRlMWQtYTdiMi0xOTlhZGVjMThjYWEiLCJlbWFpbCI6IndpbGxAZW1haWwuY29tIiwiaWF0IjoxNzg5Nzc1NTI4LCJleHAiOjE3OTAzODAzMjh9.Pxak7a3dINDeuw10fX_dqXv4xV92jd5bQReZSKngBDo',
+        })
+        .expect(401);
+    });
+
+    test('Should return 200 if credentials are valid', async () => {
+      await request(app.getHttpServer()).post('/api/auth/register').send({
+        name: 'Will',
+        email: 'will@email.com',
+        password: '123456',
+        barbershopName: 'Barbearia do Will',
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'will@email.com', password: '123456' })
+        .expect(201);
+      console.log('BODY COMPLETO', JSON.stringify(response.body));
+      const body = response.body as {
+        accessToken: string;
+        refreshToken: string;
+      };
+
+      const { refreshToken } = body;
+      console.log('VAMOS VAMOS', refreshToken);
+
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .send({
+          refreshToken: `${refreshToken}`,
+        })
+        .expect(200);
     });
   });
 });

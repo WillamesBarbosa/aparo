@@ -14,6 +14,5 @@ export const registerAndLogin = async (
   const response = await request(app.getHttpServer())
     .post('/api/auth/login')
     .send({ email: 'will@email.com', password: '123456' });
-
   return (response.body as { accessToken: string }).accessToken;
 };
