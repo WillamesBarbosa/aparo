@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Schedule } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { SchedulesService } from '../schedules/schedules.service';
@@ -121,5 +122,67 @@ export class AppointmentsService {
       },
       include: { service: true, customer: true, barbershop: true },
     });
+  }
+
+  async getAvailableSlots(
+    barbershopId: string,
+    serviceId: string,
+    date: string,
+  ) {
+    const appointmentDate = new Date(date);
+    const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
+    // console.log('DATE:', date);
+    // console.log('DAY OF WEEK:', dayOfWeek);
+    let schedule: Schedule;
+    try {
+      schedule = await this.schedulesService.findByDay(barbershopId, dayOfWeek);
+    } catch {
+      return { date, available: false, reason: 'no_schedule', slots: [] };
+    }
+
+    if (!schedule.active) {
+      return { date, available: false, reason: 'no_schedule', slots: [] };
+    }
+
+    const service = await this.servicesService.findById(serviceId);
+    const existingAppointments = await this.getExistingAppointments(
+      barbershopId,
+      appointmentDate,
+    );
+
+    const slots = this.availabilityService.generateSlots(
+      schedule.openTime,
+      schedule.closeTime,
+      service.durationMins,
+      existingAppointments,
+    );
+
+    return {
+      date,
+      dayOfWeek,
+      available: slots.length > 0,
+      reason: slots.length === 0 ? 'fully_booked' : null,
+      slots,
+    };
+  }
+
+  async getWeekAvailability(barbershopId: string, serviceId: string) {
+    const results: Awaited<ReturnType<typeof this.getAvailableSlots>>[] = [];
+    const today = new Date();
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setUTCDate(today.getUTCDate() + i);
+      date.setUTCHours(0, 0, 0, 0);
+
+      const result = await this.getAvailableSlots(
+        barbershopId,
+        serviceId,
+        date.toISOString(),
+      );
+
+      results.push(result);
+    }
+    return results;
   }
 }

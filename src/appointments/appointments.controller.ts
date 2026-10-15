@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { BarbershopsService } from '../barbershops/barbershops.service';
 import type { AuthenticatedRequest } from '../common/types/authenticated-request.interface';
@@ -26,5 +34,29 @@ export class AppointmentsController {
   @Post('public')
   async createPublic(@Body() dto: CreatePublicAppointmentDto) {
     return this.appointmentsService.createPublic(dto);
+  }
+
+  @Get('available')
+  async getAvailableSlots(
+    @Query('barbershopId') barbeshopId: string,
+    @Query('serviceId') serviceId: string,
+    @Query('date') date: string,
+  ) {
+    return this.appointmentsService.getAvailableSlots(
+      barbeshopId,
+      serviceId,
+      date,
+    );
+  }
+
+  @Get('available/week')
+  async getWeekAvailability(
+    @Query('barbershopId') barbershopId: string,
+    @Query('serviceId') serviceId: string,
+  ) {
+    return this.appointmentsService.getWeekAvailability(
+      barbershopId,
+      serviceId,
+    );
   }
 }

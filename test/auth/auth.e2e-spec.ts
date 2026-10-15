@@ -149,7 +149,6 @@ describe('Auth (e2e)', () => {
       };
 
       const { refreshToken } = body;
-      console.log('VAMOS VAMOS', refreshToken);
 
       await request(app.getHttpServer())
         .post('/api/auth/refresh')

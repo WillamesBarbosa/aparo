@@ -59,4 +59,43 @@ export class AvailabilityService {
       }
     }
   }
+
+  generateSlots(
+    openTime: string,
+    closeTime: string,
+    durationMins: number,
+    existingAppointments: (Appointment & { service: Service })[],
+  ): string[] {
+    const openMinutes = this.toMinutes(openTime);
+    const closeMinutes = this.toMinutes(closeTime);
+
+    const blocks = [
+      { start: openMinutes, end: openMinutes },
+      ...existingAppointments.map((appt) => {
+        const start = this.getAppointmentMinutes(new Date(appt.date));
+        return { start: start, end: start + appt.service.durationMins };
+      }),
+      { start: closeMinutes, end: closeMinutes },
+    ].sort((a, b) => a.start - b.start);
+
+    const slots: string[] = [];
+
+    for (let i = 0; i < blocks.length - 1; i++) {
+      const startSpace = blocks[i].end;
+      const endSpace = blocks[i + 1].start;
+      const avaiableSpace = endSpace - startSpace;
+
+      if (avaiableSpace < durationMins) continue;
+
+      let current = startSpace;
+      while (current + durationMins <= endSpace) {
+        const hour = String(Math.floor(current / 60)).padStart(2, '0');
+        const min = String(current % 60).padStart(2, '0');
+        slots.push(`${hour}:${min}`);
+        current += durationMins;
+      }
+    }
+
+    return slots;
+  }
 }
