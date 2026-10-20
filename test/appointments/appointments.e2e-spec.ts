@@ -303,4 +303,126 @@ describe('Appointments E2E', () => {
       });
     });
   });
+
+  describe('GET /api/appointments', () => {
+    test('Should return todays appointments', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+
+      const today = new Date();
+      today.setUTCHours(9, 0, 0, 0);
+
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .send({
+          barbershopId,
+          serviceId,
+          customerName: 'João',
+          customerPhone: '81999999999',
+          date: today.toISOString(),
+        })
+        .set('Authorization', `Bearer ${token}`);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = response.body as { id: string; date: string }[];
+
+      expect(body).toBeInstanceOf(Array);
+      expect(body.length).toBeGreaterThan(0);
+    });
+
+    test('Should return appointments for a specific date', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .send({
+          barbershopId,
+          serviceId,
+          customerName: 'João',
+          customerPhone: '81999999999',
+          date: '2026-09-07T09:00:00.000Z',
+        })
+        .set('Authorization', `Bearer ${token}`);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/appointments?date=2026-09-07T00:00:00.000Z')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = response.body as { id: string; date: string }[];
+
+      expect(body).toBeInstanceOf(Array);
+      expect(body.length).toBeGreaterThan(0);
+      expect(body[0]).toHaveProperty('service');
+      expect(body[0]).toHaveProperty('customer');
+    });
+
+    test('Should return empty array if no appointments for the day', async () => {
+      const { token } = await setupBarbershop(app);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/appointments?date=2026-09-07T00:00:00.000Z')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = response.body as [];
+      expect(body).toHaveLength(0);
+    });
+
+    test('Should return 401 if not authenticated', async () => {
+      await request(app.getHttpServer()).get('/api/appointments').expect(401);
+    });
+  });
+
+  describe('GET /api/appointments/week', () => {
+    test('Should return appointments for the next 7 days', async () => {
+      const { serviceId, token } = await setupBarbershop(app);
+
+      const today = new Date();
+      today.setUTCHours(9, 0, 0, 0);
+
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .send({
+          serviceId,
+          customerName: 'João',
+          customerPhone: '81999999999',
+          date: today.toISOString(),
+        })
+        .set('Authorization', `Bearer ${token}`);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/appointments/week')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = response.body as { id: string; date: string }[];
+
+      expect(body).toBeInstanceOf(Array);
+      expect(body.length).toBeGreaterThan(0);
+      expect(body[0]).toHaveProperty('service');
+      expect(body[0]).toHaveProperty('customer');
+    });
+
+    test('Should return empty array if no appointments for the week', async () => {
+      const { token } = await setupBarbershop(app);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/appointments/week')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const body = response.body as [];
+      expect(body).toHaveLength(0);
+    });
+
+    test('Should return 401 if not authenticated', async () => {
+      await request(app.getHttpServer())
+        .get('/api/appointments/week')
+        .expect(401);
+    });
+  });
 });

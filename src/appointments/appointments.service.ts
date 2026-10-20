@@ -185,4 +185,48 @@ export class AppointmentsService {
     }
     return results;
   }
+
+  async findByDay(barbershopId: string, date?: string) {
+    const targetDate = date ? new Date(date) : new Date();
+
+    const startOfDay = new Date(targetDate);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    return this.prisma.appointment.findMany({
+      where: {
+        barbershopId,
+        date: { gte: startOfDay, lte: endOfDay },
+      },
+      orderBy: { date: 'asc' },
+      include: {
+        service: true,
+        customer: true,
+      },
+    });
+  }
+
+  async findWeek(barbershopId: string) {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(today);
+    endOfWeek.setUTCDate(today.getUTCDate() + 7);
+    endOfWeek.setUTCHours(23, 59, 59, 999);
+
+    return this.prisma.appointment.findMany({
+      where: {
+        barbershopId,
+        date: { gte: startOfWeek, lte: endOfWeek },
+      },
+      orderBy: { date: 'asc' },
+      include: {
+        service: true,
+        customer: true,
+      },
+    });
+  }
 }

@@ -59,4 +59,21 @@ export class AppointmentsController {
       serviceId,
     );
   }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async findByDay(
+    @Request() req: AuthenticatedRequest,
+    @Query('date') date?: string,
+  ) {
+    const barbershop = await this.barbershopsService.findById(req.user.id);
+    return this.appointmentsService.findByDay(barbershop.id, date);
+  }
+
+  @Get('week')
+  @UseGuards(JwtAuthGuard)
+  async findWeek(@Request() req: AuthenticatedRequest) {
+    const barbershop = await this.barbershopsService.findById(req.user.id);
+    return this.appointmentsService.findWeek(barbershop.id);
+  }
 }
