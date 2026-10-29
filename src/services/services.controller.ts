@@ -16,31 +16,42 @@ import { CreateServiceDto } from './dto/create-service.dto';
 import { BarbershopsService } from 'src/barbershops/barbershops.service';
 
 @Controller('services')
-@UseGuards(JwtAuthGuard)
 export class ServicesController {
   constructor(
     private readonly servicesService: ServicesService,
     private readonly barbershopService: BarbershopsService,
   ) {}
 
+  @Get(':id')
+  async availableService(@Param('id') id: string) {
+    const barbershop = await this.barbershopService.findById(id);
+
+    const services = await this.servicesService.available(id);
+
+    return { barbershop: { name: barbershop.name, services } };
+  }
+
   @Post()
+  @UseGuards(JwtAuthGuard)
   async create(
     @Request() req: AuthenticatedRequest,
     @Body() dto: CreateServiceDto,
   ) {
-    const barbershop = await this.barbershopService.findById(req.user.id);
+    const barbershop = await this.barbershopService.findByUserId(req.user.id);
 
     return this.servicesService.create(barbershop.id, dto);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll(@Request() req: AuthenticatedRequest) {
-    const barbershop = await this.barbershopService.findById(req.user.id);
+    const barbershop = await this.barbershopService.findByUserId(req.user.id);
 
     return this.servicesService.findAll(barbershop.id);
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   async update(
     @Request() req: AuthenticatedRequest,
     @Param('id') id: string,
@@ -56,6 +67,7 @@ export class ServicesController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.servicesService.delete(id);
   }

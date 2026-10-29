@@ -25,6 +25,12 @@ export class ServicesService {
     });
   }
 
+  async available(barbershopId: string) {
+    return this.prisma.service.findMany({
+      where: { barbershopId, active: true },
+    });
+  }
+
   async findById(id: string) {
     const service = await this.prisma.service.findUnique({ where: { id } });
 
