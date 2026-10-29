@@ -142,7 +142,6 @@ describe('Auth (e2e)', () => {
         .post('/api/auth/login')
         .send({ email: 'will@email.com', password: '123456' })
         .expect(201);
-      console.log('BODY COMPLETO', JSON.stringify(response.body));
       const body = response.body as {
         accessToken: string;
         refreshToken: string;

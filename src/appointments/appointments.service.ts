@@ -55,6 +55,7 @@ export class AppointmentsService {
       barbershopId,
       dayOfWeek,
     );
+
     const service = await this.servicesService.findById(dto.serviceId);
 
     this.availabilityService.validateBusinessHours(

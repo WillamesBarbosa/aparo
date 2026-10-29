@@ -26,7 +26,7 @@ describe('Barbershop service', () => {
     test('should throw NotFoundException if the user does not exist', async () => {
       prisma.barbershop.findUnique.mockResolvedValue(null);
 
-      await expect(service.findById('not-exist')).rejects.toThrow(
+      await expect(service.findByUserId('not-exist')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -36,7 +36,7 @@ describe('Barbershop service', () => {
     test('Should return not found if barbershop not exist', async () => {
       prisma.barbershop.findUnique.mockResolvedValue(null);
 
-      await expect(service.findById('not-exist')).rejects.toThrow(
+      await expect(service.findByUserId('not-exist')).rejects.toThrow(
         NotFoundException,
       );
     });

@@ -29,7 +29,7 @@ export class BarbershopsController {
 
   @Get('me')
   findMine(@Request() req: AuthenticatedRequest) {
-    return this.barbershopsService.findById(req.user.id);
+    return this.barbershopsService.findByUserId(req.user.id);
   }
 
   @Put('me')

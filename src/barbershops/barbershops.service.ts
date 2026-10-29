@@ -19,7 +19,17 @@ export class BarbershopsService {
     });
   }
 
-  async findById(userId: string) {
+  async findById(id: string) {
+    const barbershop = await this.prisma.barbershop.findUnique({
+      where: { id },
+    });
+
+    if (!barbershop) throw new NotFoundException('Barbershop not found.');
+
+    return barbershop;
+  }
+
+  async findByUserId(userId: string) {
     const barbershop = await this.prisma.barbershop.findUnique({
       where: { userId },
     });
@@ -30,13 +40,13 @@ export class BarbershopsService {
   }
 
   async update(userId: string, dto: UpdateBarbershopDto) {
-    await this.findById(userId);
+    await this.findByUserId(userId);
 
     return this.prisma.barbershop.update({ where: { userId }, data: dto });
   }
 
   async delete(userId: string) {
-    await this.findById(userId);
+    await this.findByUserId(userId);
 
     return this.prisma.barbershop.delete({ where: { userId } });
   }

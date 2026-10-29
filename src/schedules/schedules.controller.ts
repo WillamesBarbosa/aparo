@@ -28,13 +28,13 @@ export class SchedulesController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: CreateScheduleDto,
   ) {
-    const barbershop = await this.barbershopsServices.findById(req.user.id);
+    const barbershop = await this.barbershopsServices.findByUserId(req.user.id);
     return this.schedulesService.create(barbershop.id, dto);
   }
 
   @Get()
   async findAll(@Request() req: AuthenticatedRequest) {
-    const barbershop = await this.barbershopsServices.findById(req.user.id);
+    const barbershop = await this.barbershopsServices.findByUserId(req.user.id);
     return this.schedulesService.findAll(barbershop.id);
   }
 
@@ -43,7 +43,7 @@ export class SchedulesController {
     @Request() req: AuthenticatedRequest,
     @Param('dayOfWeek') dayOfWeek: DayOfWeek,
   ) {
-    const barbershop = await this.barbershopsServices.findById(req.user.id);
+    const barbershop = await this.barbershopsServices.findByUserId(req.user.id);
     return this.schedulesService.delete(barbershop.id, dayOfWeek);
   }
 }

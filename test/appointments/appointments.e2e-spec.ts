@@ -307,12 +307,11 @@ describe('Appointments E2E', () => {
   describe('GET /api/appointments', () => {
     test('Should return todays appointments', async () => {
       const { barbershopId, serviceId, token } = await setupBarbershop(app);
-
       const today = new Date();
       today.setUTCHours(9, 0, 0, 0);
 
       await request(app.getHttpServer())
-        .post('/api/appointments')
+        .post('/api/appointments/')
         .send({
           barbershopId,
           serviceId,
@@ -328,7 +327,6 @@ describe('Appointments E2E', () => {
         .expect(200);
 
       const body = response.body as { id: string; date: string }[];
-
       expect(body).toBeInstanceOf(Array);
       expect(body.length).toBeGreaterThan(0);
     });
