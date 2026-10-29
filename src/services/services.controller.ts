@@ -22,6 +22,7 @@ export class ServicesController {
     private readonly barbershopService: BarbershopsService,
   ) {}
 
+  //Este id não é do service é do barbershop
   @Get(':id')
   async availableService(@Param('id') id: string) {
     const barbershop = await this.barbershopService.findById(id);
@@ -63,12 +64,16 @@ export class ServicesController {
       active: boolean;
     },
   ) {
-    return this.servicesService.update(id, data);
+    const barbershop = await this.barbershopService.findByUserId(req.user.id);
+
+    return this.servicesService.update(barbershop.id, id, data);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.servicesService.delete(id);
+    const barbershop = await this.barbershopService.findByUserId(req.user.id);
+
+    return this.servicesService.delete(barbershop.id, id);
   }
 }

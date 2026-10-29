@@ -39,13 +39,32 @@ export class ServicesService {
     return service;
   }
 
-  async update(id: string, dto: UpdateServiceDto) {
-    await this.findById(id);
+  async findOwned(id: string, barbershopId: string) {
+    const service = await this.prisma.service.findFirst({
+      where: { id, barbershopId },
+    });
+
+    if (!service) throw new NotFoundException('Service not found');
+
+    return service;
+  }
+
+  async findActiveOwned(id: string, barbershopId: string) {
+    const service = await this.prisma.service.findFirst({
+      where: { id, barbershopId, active: true },
+    });
+    if (!service) throw new NotFoundException('Service not found');
+    return service;
+  }
+
+  async update(barbershopId: string, id: string, dto: UpdateServiceDto) {
+    await this.findOwned(id, barbershopId);
+
     return this.prisma.service.update({ where: { id }, data: dto });
   }
 
-  async delete(id: string) {
-    await this.findById(id);
+  async delete(barbershopId: string, id: string) {
+    await this.findOwned(id, barbershopId);
     return this.prisma.service.delete({ where: { id } });
   }
 }
