@@ -56,7 +56,10 @@ export class AppointmentsService {
       dayOfWeek,
     );
 
-    const service = await this.servicesService.findById(dto.serviceId);
+    const service = await this.servicesService.findOwned(
+      dto.serviceId,
+      barbershopId,
+    );
 
     this.availabilityService.validateBusinessHours(
       schedule,
@@ -90,7 +93,10 @@ export class AppointmentsService {
       dayOfWeek,
     );
 
-    const service = await this.servicesService.findById(dto.serviceId);
+    const service = await this.servicesService.findActiveOwned(
+      dto.serviceId,
+      dto.barbershopId,
+    );
     this.availabilityService.validateBusinessHours(
       schedule,
       appointmentDate,
@@ -132,8 +138,7 @@ export class AppointmentsService {
   ) {
     const appointmentDate = new Date(date);
     const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
-    // console.log('DATE:', date);
-    // console.log('DAY OF WEEK:', dayOfWeek);
+
     let schedule: Schedule;
     try {
       schedule = await this.schedulesService.findByDay(barbershopId, dayOfWeek);

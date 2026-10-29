@@ -142,12 +142,11 @@ describe('Appointments E2E', () => {
 
   describe('POST /api/appointments', () => {
     test('should return 404 if the specified day is not in the barbers schedule', async () => {
-      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const { serviceId, token } = await setupBarbershop(app);
 
       const response = await request(app.getHttpServer())
         .post('/api/appointments')
         .send({
-          barbershopId,
           serviceId,
           customerName: 'Will',
           customerPhone: '81998312549',
@@ -225,7 +224,6 @@ describe('Appointments E2E', () => {
       await request(app.getHttpServer())
         .post('/api/appointments')
         .send({
-          barbershopId,
           serviceId,
           customerName: 'João',
           customerPhone: '81999999999',
@@ -238,7 +236,7 @@ describe('Appointments E2E', () => {
           `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=2026-09-07T00:00:00.000Z`,
         )
         .expect(200);
-
+      console.log(response.body, 'VAMOS VER');
       const body = response.body as { available: boolean; slots: string[] };
 
       expect(body.available).toBe(true);
@@ -306,14 +304,13 @@ describe('Appointments E2E', () => {
 
   describe('GET /api/appointments', () => {
     test('Should return todays appointments', async () => {
-      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const { serviceId, token } = await setupBarbershop(app);
       const today = new Date();
       today.setUTCHours(9, 0, 0, 0);
 
       await request(app.getHttpServer())
         .post('/api/appointments/')
         .send({
-          barbershopId,
           serviceId,
           customerName: 'João',
           customerPhone: '81999999999',
@@ -332,12 +329,11 @@ describe('Appointments E2E', () => {
     });
 
     test('Should return appointments for a specific date', async () => {
-      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const { serviceId, token } = await setupBarbershop(app);
 
       await request(app.getHttpServer())
         .post('/api/appointments')
         .send({
-          barbershopId,
           serviceId,
           customerName: 'João',
           customerPhone: '81999999999',
