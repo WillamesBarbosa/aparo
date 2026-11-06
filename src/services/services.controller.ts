@@ -14,6 +14,7 @@ import { ServicesService } from './services.service';
 import type { AuthenticatedRequest } from 'src/common/types/authenticated-request.interface';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { BarbershopsService } from 'src/barbershops/barbershops.service';
+import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Controller('services')
 export class ServicesController {
@@ -29,7 +30,7 @@ export class ServicesController {
 
     const services = await this.servicesService.available(id);
 
-    return { barbershop: { name: barbershop.name, services } };
+    return { barbershop: { name: barbershop.name }, services };
   }
 
   @Post()
@@ -57,12 +58,7 @@ export class ServicesController {
     @Request() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body()
-    data: {
-      name: string;
-      price: number;
-      durationMins: number;
-      active: boolean;
-    },
+    data: UpdateServiceDto,
   ) {
     const barbershop = await this.barbershopService.findByUserId(req.user.id);
 

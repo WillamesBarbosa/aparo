@@ -37,7 +37,9 @@ describe('Schedules service', () => {
       prisma.service.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.update('not-exist', { name: 'Fade' }),
+        service.update('barbershop-not-exist-id', 'not-exist-id', {
+          name: 'Fade',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -46,7 +48,30 @@ describe('Schedules service', () => {
     test('Should return NotFoundException if schedule not exist', async () => {
       prisma.service.findUnique.mockResolvedValue(null);
 
-      await expect(service.delete('not-exist')).rejects.toThrow(
+      await expect(
+        service.delete('barbershop-not-exist-id', 'not-exist-id'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('ServicesService.findOwned', () => {
+    const prisma = mockDeep<PrismaService>();
+    const service = new ServicesService(prisma);
+
+    test('filters by id and barbershopId', async () => {
+      prisma.service.findFirst.mockResolvedValue({ id: 's1' } as never);
+
+      await service.findOwned('s1', 'b1');
+
+      expect(prisma.service.findFirst).toHaveBeenCalledWith({
+        where: { id: 's1', barbershopId: 'b1' },
+      });
+    });
+
+    test('throws 404 when not found', async () => {
+      prisma.service.findFirst.mockResolvedValue(null);
+
+      await expect(service.findOwned('s1', 'b1')).rejects.toThrow(
         NotFoundException,
       );
     });

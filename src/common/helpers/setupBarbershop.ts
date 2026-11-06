@@ -2,8 +2,11 @@ import { INestApplication } from '@nestjs/common';
 import { registerAndLogin } from './auth-helper';
 import request from 'supertest';
 
-export const setupBarbershop = async (app: INestApplication) => {
-  const token = await registerAndLogin(app);
+export const setupBarbershop = async (
+  app: INestApplication,
+  email = 'barber@test.com',
+) => {
+  const token = await registerAndLogin(app, email);
 
   const serviceResponse = await request(app.getHttpServer())
     .post('/api/services')

@@ -6,6 +6,7 @@ import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
 import { makeMockUser } from 'src/common/makeMockUser';
 import * as bcrypt from 'bcrypt';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 
 let service: AuthService;
 let usersService: DeepMockProxy<UsersService>;
@@ -17,13 +18,18 @@ describe('ValidateUser and Login', () => {
     usersService = mockDeep<UsersService>();
     jwtService = mockDeep<JwtService>();
     configService = mockDeep<ConfigService>();
-
+    const redisMock = {
+      set: jest.fn().mockResolvedValue('OK'),
+      get: jest.fn(),
+      del: jest.fn(),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: usersService },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
+        { provide: REDIS_CLIENT, useValue: redisMock },
       ],
     }).compile();
 
