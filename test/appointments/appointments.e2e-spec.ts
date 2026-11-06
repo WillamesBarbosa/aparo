@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import Redis from 'ioredis';
 import { AppModule } from 'src/app.module';
+import { nextMondayAt9Utc } from 'src/common/helpers/nextMonday';
 import { setupBarbershop } from 'src/common/helpers/setupBarbershop';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { REDIS_CLIENT } from 'src/redis/redis.module';
@@ -156,6 +157,34 @@ describe('Appointments E2E', () => {
 
       expect(response.status).toBe(404);
     });
+
+    test('authenticated: 409 when two appointments overlap', async () => {
+      const { serviceId, token } = await setupBarbershop(app);
+      const body = {
+        serviceId,
+        customerName: 'Will',
+        customerPhone: '81998312549',
+        date: nextMondayAt9Utc(),
+      };
+
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body)
+        .expect(409);
+
+      const total = await prisma.appointment.count();
+      expect(total).toBe(1);
+
+      const customers = await prisma.customer.count();
+      expect(customers).toBe(1);
+    });
   });
 
   describe('GET /api/appointments/available', () => {
@@ -236,7 +265,7 @@ describe('Appointments E2E', () => {
           `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=2026-09-07T00:00:00.000Z`,
         )
         .expect(200);
-      console.log(response.body, 'VAMOS VER');
+
       const body = response.body as { available: boolean; slots: string[] };
 
       expect(body.available).toBe(true);

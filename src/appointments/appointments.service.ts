@@ -67,6 +67,17 @@ export class AppointmentsService {
       service.durationMins,
     );
 
+    const existingAppointments = await this.getExistingAppointments(
+      barbershopId,
+      appointmentDate,
+    );
+
+    this.availabilityService.validateConflicts(
+      existingAppointments,
+      appointmentDate,
+      service.durationMins,
+    );
+
     const customer = await this.customerService.create({
       name: dto.customerName,
       phone: dto.customerPhone,
