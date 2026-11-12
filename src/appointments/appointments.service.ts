@@ -161,7 +161,10 @@ export class AppointmentsService {
       return { date, available: false, reason: 'no_schedule', slots: [] };
     }
 
-    const service = await this.servicesService.findById(serviceId);
+    const service = await this.servicesService.findActiveOwned(
+      serviceId,
+      barbershopId,
+    );
     const existingAppointments = await this.getExistingAppointments(
       barbershopId,
       appointmentDate,
