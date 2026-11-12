@@ -13,6 +13,9 @@ import type { AuthenticatedRequest } from '../common/types/authenticated-request
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth-guard';
 import { CreateAppointmentsDto } from './dto/create-appointments.dto';
 import { CreatePublicAppointmentDto } from './dto/create-public-appointments.dto';
+import { WeekQueryDto } from './dto/week-query.dto';
+import { AvailableWeekQueryDto } from './dto/available-week-query.dto';
+import { AvailableSlotsQueryDto } from './dto/available-slots-query.dto';
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -37,26 +40,19 @@ export class AppointmentsController {
   }
 
   @Get('available')
-  async getAvailableSlots(
-    @Query('barbershopId') barbeshopId: string,
-    @Query('serviceId') serviceId: string,
-    @Query('date') date: string,
-  ) {
+  async getAvailableSlots(@Query() query: AvailableSlotsQueryDto) {
     return this.appointmentsService.getAvailableSlots(
-      barbeshopId,
-      serviceId,
-      date,
+      query.barbershopId,
+      query.serviceId,
+      query.date,
     );
   }
 
   @Get('available/week')
-  async getWeekAvailability(
-    @Query('barbershopId') barbershopId: string,
-    @Query('serviceId') serviceId: string,
-  ) {
+  async getWeekAvailability(@Query() query: AvailableWeekQueryDto) {
     return this.appointmentsService.getWeekAvailability(
-      barbershopId,
-      serviceId,
+      query.barbershopId,
+      query.serviceId,
     );
   }
 
@@ -72,8 +68,11 @@ export class AppointmentsController {
 
   @Get('week')
   @UseGuards(JwtAuthGuard)
-  async findWeek(@Request() req: AuthenticatedRequest) {
+  async findWeek(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: WeekQueryDto,
+  ) {
     const barbershop = await this.barbershopsService.findByUserId(req.user.id);
-    return this.appointmentsService.findWeek(barbershop.id);
+    return this.appointmentsService.findWeek(barbershop.id, query.from);
   }
 }

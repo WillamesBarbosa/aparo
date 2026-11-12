@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Schedule } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -9,6 +9,7 @@ import { DayOfWeek } from '@prisma/client';
 import { CreateAppointmentsDto } from './dto/create-appointments.dto';
 import { CreatePublicAppointmentDto } from './dto/create-public-appointments.dto';
 import { CustomerService } from 'src/customer/customers.service';
+import { barbershopNow } from 'src/common/helpers/barbershopNow';
 
 const DAYS: DayOfWeek[] = [
   'SUNDAY',
@@ -45,6 +46,17 @@ export class AppointmentsService {
       },
       include: { service: true },
     });
+  }
+
+  private resolveStartOfDay(from?: string): Date {
+    const start = from ? new Date(`${from}T00:00:00.000Z`) : barbershopNow();
+
+    if (Number.isNaN(start.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+
+    start.setUTCHours(0, 0, 0, 0);
+    return start;
   }
 
   async createByBarbershop(barbershopId: string, dto: CreateAppointmentsDto) {
@@ -108,6 +120,7 @@ export class AppointmentsService {
       dto.serviceId,
       dto.barbershopId,
     );
+
     this.availabilityService.validateBusinessHours(
       schedule,
       appointmentDate,
@@ -145,20 +158,23 @@ export class AppointmentsService {
   async getAvailableSlots(
     barbershopId: string,
     serviceId: string,
-    date: string,
+    date?: string,
   ) {
-    const appointmentDate = new Date(date);
+    const appointmentDate = date ? new Date(date) : barbershopNow();
+    appointmentDate.setUTCHours(0, 0, 0, 0);
+
+    const dateIso = appointmentDate.toISOString();
     const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
 
     let schedule: Schedule;
     try {
       schedule = await this.schedulesService.findByDay(barbershopId, dayOfWeek);
     } catch {
-      return { date, available: false, reason: 'no_schedule', slots: [] };
+      return { dateIso, available: false, reason: 'no_schedule', slots: [] };
     }
 
     if (!schedule.active) {
-      return { date, available: false, reason: 'no_schedule', slots: [] };
+      return { dateIso, available: false, reason: 'no_schedule', slots: [] };
     }
 
     const service = await this.servicesService.findActiveOwned(
@@ -178,7 +194,7 @@ export class AppointmentsService {
     );
 
     return {
-      date,
+      date: dateIso,
       dayOfWeek,
       available: slots.length > 0,
       reason: slots.length === 0 ? 'fully_booked' : null,
@@ -188,7 +204,7 @@ export class AppointmentsService {
 
   async getWeekAvailability(barbershopId: string, serviceId: string) {
     const results: Awaited<ReturnType<typeof this.getAvailableSlots>>[] = [];
-    const today = new Date();
+    const today = barbershopNow();
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
@@ -207,7 +223,7 @@ export class AppointmentsService {
   }
 
   async findByDay(barbershopId: string, date?: string) {
-    const targetDate = date ? new Date(date) : new Date();
+    const targetDate = date ? new Date(date) : barbershopNow();
 
     const startOfDay = new Date(targetDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -228,13 +244,12 @@ export class AppointmentsService {
     });
   }
 
-  async findWeek(barbershopId: string) {
-    const today = new Date();
-    const startOfWeek = new Date(today);
+  async findWeek(barbershopId: string, from?: string) {
+    const startOfWeek = this.resolveStartOfDay(from);
     startOfWeek.setUTCHours(0, 0, 0, 0);
 
-    const endOfWeek = new Date(today);
-    endOfWeek.setUTCDate(today.getUTCDate() + 7);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
     endOfWeek.setUTCHours(23, 59, 59, 999);
 
     return this.prisma.appointment.findMany({
