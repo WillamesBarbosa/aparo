@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Schedule } from '@prisma/client';
+import { Schedule, Service } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { SchedulesService } from '../schedules/schedules.service';
@@ -21,6 +21,10 @@ const DAYS: DayOfWeek[] = [
   'SATURDAY',
 ];
 
+type AppointmentInput = Pick<
+  CreateAppointmentsDto,
+  'customerName' | 'customerPhone' | 'date'
+>;
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -59,18 +63,17 @@ export class AppointmentsService {
     return start;
   }
 
-  async createByBarbershop(barbershopId: string, dto: CreateAppointmentsDto) {
-    const appointmentDate = new Date(dto.date);
+  private async createAppointment(
+    barbershopId: string,
+    input: AppointmentInput,
+    service: Service,
+  ) {
+    const appointmentDate = new Date(input.date);
     const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
 
     const schedule = await this.schedulesService.findByDay(
       barbershopId,
       dayOfWeek,
-    );
-
-    const service = await this.servicesService.findOwned(
-      dto.serviceId,
-      barbershopId,
     );
 
     this.availabilityService.validateBusinessHours(
@@ -91,14 +94,14 @@ export class AppointmentsService {
     );
 
     const customer = await this.customerService.create({
-      name: dto.customerName,
-      phone: dto.customerPhone,
+      name: input.customerName,
+      phone: input.customerPhone,
     });
 
     return this.prisma.appointment.create({
       data: {
         barbershopId,
-        serviceId: dto.serviceId,
+        serviceId: service.id,
         customerId: customer.id,
         date: appointmentDate,
         status: 'PENDING',
@@ -107,52 +110,22 @@ export class AppointmentsService {
     });
   }
 
-  async createPublic(dto: CreatePublicAppointmentDto) {
-    const appointmentDate = new Date(dto.date);
-    const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
-
-    const schedule = await this.schedulesService.findByDay(
-      dto.barbershopId,
-      dayOfWeek,
+  async createByBarbershop(barbershopId: string, dto: CreateAppointmentsDto) {
+    const service = await this.servicesService.findOwned(
+      dto.serviceId,
+      barbershopId,
     );
 
+    return this.createAppointment(barbershopId, dto, service);
+  }
+
+  async createPublic(dto: CreatePublicAppointmentDto) {
     const service = await this.servicesService.findActiveOwned(
       dto.serviceId,
       dto.barbershopId,
     );
 
-    this.availabilityService.validateBusinessHours(
-      schedule,
-      appointmentDate,
-      service.durationMins,
-    );
-
-    const existingAppointments = await this.getExistingAppointments(
-      dto.barbershopId,
-      appointmentDate,
-    );
-
-    this.availabilityService.validateConflicts(
-      existingAppointments,
-      appointmentDate,
-      service.durationMins,
-    );
-
-    const customer = await this.customerService.create({
-      name: dto.customerName,
-      phone: dto.customerPhone,
-    });
-
-    return this.prisma.appointment.create({
-      data: {
-        barbershopId: dto.barbershopId,
-        serviceId: dto.serviceId,
-        customerId: customer.id,
-        date: appointmentDate,
-        status: 'PENDING',
-      },
-      include: { service: true, customer: true, barbershop: true },
-    });
+    return this.createAppointment(dto.barbershopId, dto, service);
   }
 
   async getAvailableSlots(
@@ -170,11 +143,21 @@ export class AppointmentsService {
     try {
       schedule = await this.schedulesService.findByDay(barbershopId, dayOfWeek);
     } catch {
-      return { dateIso, available: false, reason: 'no_schedule', slots: [] };
+      return {
+        date: dateIso,
+        available: false,
+        reason: 'no_schedule',
+        slots: [],
+      };
     }
 
     if (!schedule.active) {
-      return { dateIso, available: false, reason: 'no_schedule', slots: [] };
+      return {
+        date: dateIso,
+        available: false,
+        reason: 'no_schedule',
+        slots: [],
+      };
     }
 
     const service = await this.servicesService.findActiveOwned(
