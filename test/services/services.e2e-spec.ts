@@ -5,10 +5,13 @@ import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { registerAndLogin } from 'src/common/helpers/auth-helper';
 import { setupBarbershop } from 'src/common/helpers/setupBarbershop';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 
 describe('Services', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,10 +36,13 @@ describe('Services', () => {
     await prisma.customer.deleteMany();
     await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
+    redis = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {

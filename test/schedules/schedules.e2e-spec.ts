@@ -1,13 +1,16 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import Redis from 'ioredis';
 import { AppModule } from 'src/app.module';
 import { registerAndLogin } from 'src/common/helpers/auth-helper';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 import request from 'supertest';
 
 describe('', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -29,10 +32,13 @@ describe('', () => {
     await prisma.schedule.deleteMany();
     await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
+    redis = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {

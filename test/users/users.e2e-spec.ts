@@ -3,10 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 
 describe('Users (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,10 +28,13 @@ describe('Users (e2e)', () => {
 
     await app.init();
     prisma = module.get<PrismaService>(PrismaService);
+    redis = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {

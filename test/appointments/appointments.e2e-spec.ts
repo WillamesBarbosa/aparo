@@ -44,6 +44,8 @@ describe('Appointments E2E', () => {
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {
@@ -73,6 +75,7 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Service not found');
       expect(await prisma.appointment.count()).toBe(0);
     });
 
@@ -94,6 +97,7 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Service not found');
       expect(await prisma.appointment.count()).toBe(0);
     });
 
@@ -101,11 +105,13 @@ describe('Appointments E2E', () => {
       const a = await setupBarbershop(app, 'a@test.com');
       const b = await setupBarbershop(app, 'b@test.com');
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .get(
           `/api/appointments/available?barbershopId=${a.barbershopId}&serviceId=${b.serviceId}&date=${nextMonday()}`,
         )
         .expect(404);
+
+      expect(response.body).toHaveProperty('message', 'Service not found');
     });
 
     test('authenticated: 404 when the service belongs to another barbershop', async () => {
@@ -123,9 +129,11 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Service not found');
       expect(await prisma.appointment.count()).toBe(0);
     });
   });
+
   describe('POST /api/appointments/public', () => {
     test('should return 404 if the specified day is not in the barbers schedule', async () => {
       const { barbershopId, serviceId } = await setupBarbershop(app);
@@ -141,6 +149,7 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Schedule not found.');
     });
 
     test('should return 400 if the specified time is outside business hours', async () => {
@@ -177,6 +186,7 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Service not found');
     });
 
     test('should return a conflict if two appointments overlap', async () => {
@@ -200,6 +210,11 @@ describe('Appointments E2E', () => {
         });
 
       expect(response.status).toBe(409);
+      expect(await prisma.appointment.count()).toBe(1);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Time slot is already taken',
+      );
     });
 
     test('Should return appointment created', async () => {
@@ -233,6 +248,7 @@ describe('Appointments E2E', () => {
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Schedule not found.');
     });
 
     test('authenticated: 409 when two appointments overlap', async () => {
@@ -250,7 +266,7 @@ describe('Appointments E2E', () => {
         .send(body)
         .expect(201);
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/api/appointments')
         .set('Authorization', `Bearer ${token}`)
         .send(body)
@@ -261,6 +277,10 @@ describe('Appointments E2E', () => {
 
       const customers = await prisma.customer.count();
       expect(customers).toBe(1);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Time slot is already taken',
+      );
     });
   });
 
@@ -497,7 +517,7 @@ describe('Appointments E2E', () => {
       });
 
       const response = await request(app.getHttpServer())
-        .get('/api/appointments')
+        .get('/api/appointments/week')
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 

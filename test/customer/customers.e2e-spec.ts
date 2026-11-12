@@ -3,10 +3,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import request from 'supertest';
 import { PrismaService } from 'src/prisma/prisma.service';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 
 describe('Customer', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,10 +29,13 @@ describe('Customer', () => {
     await app.init();
     prisma = module.get<PrismaService>(PrismaService);
     await prisma.customer.deleteMany();
+    redis = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {

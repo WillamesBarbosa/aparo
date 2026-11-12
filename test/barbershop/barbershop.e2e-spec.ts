@@ -4,10 +4,13 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { registerAndLogin } from 'src/common/helpers/auth-helper';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from 'src/redis/redis.module';
 
 describe('Barbershop', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -28,10 +31,13 @@ describe('Barbershop', () => {
     prisma = module.get<PrismaService>(PrismaService);
     await prisma.barbershop.deleteMany();
     await prisma.user.deleteMany();
+    redis = module.get<Redis>(REDIS_CLIENT);
   });
 
   afterAll(async () => {
     await app.close();
+    await redis.quit();
+    await prisma.$disconnect();
   });
 
   afterEach(async () => {
