@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 import { AppModule } from 'src/app.module';
 import { barbershopNow } from 'src/common/helpers/barbershopNow';
 import { createAppointmentDirect } from 'src/common/helpers/createAppointmentDirect';
-import { nextMonday } from 'src/common/helpers/nextMonday';
+import { nextMonday, nextWeekday } from 'src/common/helpers/nextMonday';
 import { setupBarbershop } from 'src/common/helpers/setupBarbershop';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { REDIS_CLIENT } from 'src/redis/redis.module';
@@ -58,6 +58,52 @@ describe('Appointments E2E', () => {
     await prisma.user.deleteMany();
   });
 
+  describe('Past dates', () => {
+    const oneHourAgo = () =>
+      new Date(barbershopNow().getTime() - 60 * 60 * 1000).toISOString();
+
+    test('public: 400 when the date is in the past', async () => {
+      const { barbershopId, serviceId } = await setupBarbershop(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/appointments/public')
+        .send({
+          barbershopId,
+          serviceId,
+          customerName: 'Will',
+          customerPhone: '81998312549',
+          date: oneHourAgo(),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Appointment date is in the past',
+      );
+      expect(await prisma.appointment.count()).toBe(0);
+    });
+
+    test('authenticated: 400 when the date is in the past', async () => {
+      const { serviceId, token } = await setupBarbershop(app);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          serviceId,
+          customerName: 'Will',
+          customerPhone: '81998312549',
+          date: oneHourAgo(),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Appointment date is in the past',
+      );
+      expect(await prisma.appointment.count()).toBe(0);
+    });
+  });
   //Describe a parte, pois é um describe orientado por regra e não por rotas
   describe('Service ownership', () => {
     test('public: 404 when the service belongs to another barbershop', async () => {
@@ -145,7 +191,7 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'Will',
           customerPhone: '81998312549',
-          date: '2026-09-10T09:00:00.000Z',
+          date: nextWeekday(2),
         });
 
       expect(response.status).toBe(404);
@@ -196,7 +242,7 @@ describe('Appointments E2E', () => {
         serviceId,
         customerName: 'Will',
         customerPhone: '81998312549',
-        date: '2026-09-07T09:00:00.000Z',
+        date: nextMonday(),
       });
 
       const response = await request(app.getHttpServer())
@@ -206,7 +252,7 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'Will',
           customerPhone: '81998312549',
-          date: '2026-09-07T09:00:00.000Z',
+          date: nextMonday(),
         });
 
       expect(response.status).toBe(409);
@@ -227,7 +273,7 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'Will',
           customerPhone: '81998312549',
-          date: '2026-09-07T09:00:00.000Z',
+          date: nextMonday(),
         });
       expect(response.status).toBe(201);
     });
@@ -243,7 +289,7 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'Will',
           customerPhone: '81998312549',
-          date: '2026-09-08T09:00:00.000Z',
+          date: nextWeekday(2),
         })
         .set('Authorization', `Bearer ${token}`);
 
@@ -365,13 +411,13 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'João',
           customerPhone: '81999999999',
-          date: '2026-09-07T08:00:00.000Z',
+          date: nextMonday(8),
         })
         .set('Authorization', `Bearer ${token}`);
 
       const response = await request(app.getHttpServer())
         .get(
-          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=2026-09-07T00:00:00.000Z`,
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=${nextWeekday(8)}`,
         )
         .expect(200);
 
@@ -470,12 +516,12 @@ describe('Appointments E2E', () => {
           serviceId,
           customerName: 'João',
           customerPhone: '81999999999',
-          date: '2026-09-07T09:00:00.000Z',
+          date: nextMonday(8),
         })
         .set('Authorization', `Bearer ${token}`);
 
       const response = await request(app.getHttpServer())
-        .get('/api/appointments?date=2026-09-07T00:00:00.000Z')
+        .get(`/api/appointments?date=${nextWeekday(8)}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 

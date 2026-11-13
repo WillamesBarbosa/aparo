@@ -69,6 +69,9 @@ export class AppointmentsService {
     service: Service,
   ) {
     const appointmentDate = new Date(input.date);
+    if (appointmentDate.getTime() <= barbershopNow().getTime()) {
+      throw new BadRequestException('Appointment date is in the past');
+    }
     const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
 
     const schedule = await this.schedulesService.findByDay(
