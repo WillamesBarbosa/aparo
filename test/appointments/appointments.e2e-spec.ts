@@ -331,11 +331,28 @@ describe('Appointments E2E', () => {
   });
 
   describe('GET /api/appointments/available', () => {
+    test('returns past_date for a day before today', async () => {
+      const { barbershopId, serviceId } = await setupBarbershop(app);
+      const yesterday = new Date(
+        barbershopNow().getTime() - 24 * 60 * 60 * 1000,
+      );
+
+      const response = await request(app.getHttpServer())
+        .get(
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=${yesterday.toISOString()}`,
+        )
+        .expect(200);
+
+      expect(response.body).toHaveProperty('available', false);
+      expect(response.body).toHaveProperty('reason', 'past_date');
+      expect(response.body).toHaveProperty('slots', []);
+    });
+
     test('Should return all available time slots for the day', async () => {
       const { barbershopId, serviceId } = await setupBarbershop(app);
       const response = await request(app.getHttpServer())
         .get(
-          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=2026-09-07T00:00:00.000Z`,
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=${nextMonday()}`,
         )
         .expect(200);
 
@@ -384,7 +401,7 @@ describe('Appointments E2E', () => {
 
       const response = await request(app.getHttpServer())
         .get(
-          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${uuidFake}&date=2026-09-07T00:00:00.000Z`,
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${uuidFake}&date=${nextMonday()}`,
         )
         .expect(404);
 

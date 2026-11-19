@@ -139,10 +139,23 @@ export class AppointmentsService {
     const appointmentDate = date ? new Date(date) : barbershopNow();
     appointmentDate.setUTCHours(0, 0, 0, 0);
 
+    const todayStart = barbershopNow();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
     const dateIso = appointmentDate.toISOString();
     const dayOfWeek = DAYS[appointmentDate.getUTCDay()];
 
+    if (appointmentDate.getTime() < todayStart.getTime()) {
+      return {
+        date: dateIso,
+        available: false,
+        reason: 'past_date',
+        slots: [],
+      };
+    }
+
     let schedule: Schedule;
+
     try {
       schedule = await this.schedulesService.findByDay(barbershopId, dayOfWeek);
     } catch {
@@ -172,12 +185,18 @@ export class AppointmentsService {
       appointmentDate,
     );
 
-    const slots = this.availabilityService.generateSlots(
+    let slots = this.availabilityService.generateSlots(
       schedule.openTime,
       schedule.closeTime,
       service.durationMins,
       existingAppointments,
     );
+
+    if (appointmentDate.getTime() === todayStart.getTime()) {
+      const now = barbershopNow();
+      const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+      slots = this.availabilityService.removePastSlots(slots, nowMinutes);
+    }
 
     return {
       date: dateIso,
