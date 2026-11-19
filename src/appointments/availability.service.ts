@@ -66,36 +66,44 @@ export class AvailabilityService {
     durationMins: number,
     existingAppointments: (Appointment & { service: Service })[],
   ): string[] {
+    // safeguard against an invalid duration: if it's 0, the while loop below will never terminate
+    if (durationMins <= 0) return [];
+
     const openMinutes = this.toMinutes(openTime);
     const closeMinutes = this.toMinutes(closeTime);
 
     const blocks = [
-      { start: openMinutes, end: openMinutes },
       ...existingAppointments.map((appt) => {
         const start = this.getAppointmentMinutes(new Date(appt.date));
-        return { start: start, end: start + appt.service.durationMins };
+        return { start, end: start + appt.service.durationMins };
       }),
-      { start: closeMinutes, end: closeMinutes },
+      { start: closeMinutes, end: closeMinutes }, // closing sentinel
     ].sort((a, b) => a.start - b.start);
 
     const slots: string[] = [];
+    let cursor = openMinutes; // the day is occupied up to this minute
 
-    for (let i = 0; i < blocks.length - 1; i++) {
-      const startSpace = blocks[i].end;
-      const endSpace = blocks[i + 1].start;
-      const avaiableSpace = endSpace - startSpace;
+    for (const block of blocks) {
+      // the free gap extends from the cursor to the beginning of the block,
+      // but never goes past the closing point
+      const limit = Math.min(block.start, closeMinutes);
 
-      if (avaiableSpace < durationMins) continue;
-
-      let current = startSpace;
-      while (current + durationMins <= endSpace) {
+      let current = cursor;
+      while (current + durationMins <= limit) {
         const hour = String(Math.floor(current / 60)).padStart(2, '0');
         const min = String(current % 60).padStart(2, '0');
         slots.push(`${hour}:${min}`);
         current += durationMins;
       }
+
+      // the cursor never moves backward
+      cursor = Math.max(cursor, block.end);
     }
 
     return slots;
+  }
+
+  removePastSlots(slots: string[], nowMinutes: number): string[] {
+    return slots.filter((slot) => this.toMinutes(slot) > nowMinutes);
   }
 }
