@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -16,6 +18,7 @@ import { CreatePublicAppointmentDto } from './dto/create-public-appointments.dto
 import { WeekQueryDto } from './dto/week-query.dto';
 import { AvailableWeekQueryDto } from './dto/available-week-query.dto';
 import { AvailableSlotsQueryDto } from './dto/available-slots-query.dto';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 
 @Controller('appointments')
 export class AppointmentsController {
@@ -24,6 +27,7 @@ export class AppointmentsController {
     private readonly barbershopsService: BarbershopsService,
   ) {}
 
+  // POSTS
   @Post()
   @UseGuards(JwtAuthGuard)
   async createByBarbershop(
@@ -38,6 +42,8 @@ export class AppointmentsController {
   async createPublic(@Body() dto: CreatePublicAppointmentDto) {
     return this.appointmentsService.createPublic(dto);
   }
+
+  //GETS
 
   @Get('available')
   async getAvailableSlots(@Query() query: AvailableSlotsQueryDto) {
@@ -74,5 +80,23 @@ export class AppointmentsController {
   ) {
     const barbershop = await this.barbershopsService.findByUserId(req.user.id);
     return this.appointmentsService.findWeek(barbershop.id, query.from);
+  }
+
+  //PATCHS
+
+  @Patch(':id/status')
+  @UseGuards(JwtAuthGuard)
+  async updateAppointmentStatus(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: UpdateAppointmentStatusDto,
+  ) {
+    const barbershop = await this.barbershopsService.findByUserId(req.user.id);
+
+    return this.appointmentsService.updateAppointmentStatus(
+      id,
+      barbershop.id,
+      dto,
+    );
   }
 }

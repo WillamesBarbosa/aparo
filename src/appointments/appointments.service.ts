@@ -1,5 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { Schedule, Service } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { AppointmentStatus, Schedule, Service } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 import { SchedulesService } from '../schedules/schedules.service';
@@ -10,6 +14,7 @@ import { CreateAppointmentsDto } from './dto/create-appointments.dto';
 import { CreatePublicAppointmentDto } from './dto/create-public-appointments.dto';
 import { CustomerService } from 'src/customer/customers.service';
 import { barbershopNow } from 'src/common/helpers/barbershopNow';
+import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 
 const DAYS: DayOfWeek[] = [
   'SUNDAY',
@@ -20,6 +25,13 @@ const DAYS: DayOfWeek[] = [
   'FRIDAY',
   'SATURDAY',
 ];
+
+const ALLOWED_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  PENDING: ['CONFIRMED', 'CANCELLED', 'COMPLETED'],
+  CONFIRMED: ['COMPLETED', 'CANCELLED'],
+  CANCELLED: [],
+  COMPLETED: [],
+};
 
 type AppointmentInput = Pick<
   CreateAppointmentsDto,
@@ -114,6 +126,16 @@ export class AppointmentsService {
       },
       include: { service: true, customer: true, barbershop: true },
     });
+  }
+
+  private async findOwned(id: string, barbershopId: string) {
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id, barbershopId },
+    });
+
+    if (!appointment) throw new NotFoundException('Appointment not found');
+
+    return appointment;
   }
 
   async createByBarbershop(barbershopId: string, dto: CreateAppointmentsDto) {
@@ -270,6 +292,25 @@ export class AppointmentsService {
         service: true,
         customer: true,
       },
+    });
+  }
+
+  async updateAppointmentStatus(
+    id: string,
+    barbershopId: string,
+    dto: UpdateAppointmentStatusDto,
+  ) {
+    const appointment = await this.findOwned(id, barbershopId);
+
+    if (!ALLOWED_TRANSITIONS[appointment.status].includes(dto.status))
+      throw new BadRequestException(
+        `Cannot change status from ${appointment.status} to ${dto.status}`,
+      );
+
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status: dto.status },
+      include: { service: true, customer: true },
     });
   }
 }

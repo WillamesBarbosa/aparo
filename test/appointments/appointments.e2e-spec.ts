@@ -717,4 +717,145 @@ describe('Appointments E2E', () => {
       },
     );
   });
+
+  describe('PATCH /api/appointments/:id/status', () => {
+    const patchStatus = (token: string, id: string, status: string) =>
+      request(app.getHttpServer())
+        .patch(`/api/appointments/${id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status });
+
+    const statusInDb = async (id: string) =>
+      (await prisma.appointment.findUnique({ where: { id } }))?.status;
+
+    test('returns 401 without token', async () => {
+      await request(app.getHttpServer())
+        .patch(`/api/appointments/${uuidFake}/status`)
+        .send({ status: 'CONFIRMED' })
+        .expect(401);
+    });
+
+    test('returns 400 for a status that does not exist', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const appt = await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: new Date(nextMonday()),
+      });
+
+      await patchStatus(token, appt.id, 'confirmado').expect(400);
+
+      expect(await statusInDb(appt.id)).toBe('PENDING');
+    });
+
+    test('returns 404 for an appointment from another barbershop', async () => {
+      const a = await setupBarbershop(app, 'a@test.com');
+      const b = await setupBarbershop(app, 'b@test.com');
+      const appt = await createAppointmentDirect(prisma, {
+        barbershopId: b.barbershopId,
+        serviceId: b.serviceId,
+        date: new Date(nextMonday()),
+      });
+
+      const response = await patchStatus(a.token, appt.id, 'CANCELLED');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Appointment not found');
+      expect(await statusInDb(appt.id)).toBe('PENDING');
+    });
+
+    test('returns 400 when trying to reactivate a cancelled appointment', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const appt = await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: new Date(nextMonday()),
+      });
+
+      await patchStatus(token, appt.id, 'CANCELLED').expect(200);
+
+      const response = await patchStatus(token, appt.id, 'CONFIRMED');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty(
+        'message',
+        'Cannot change status from CANCELLED to CONFIRMED',
+      );
+      expect(await statusInDb(appt.id)).toBe('CANCELLED');
+    });
+
+    test('follows PENDING, CONFIRMED, COMPLETED and then stops', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const appt = await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: new Date(nextMonday()),
+      });
+
+      const confirmed = await patchStatus(token, appt.id, 'CONFIRMED').expect(
+        200,
+      );
+      expect(confirmed.body).toHaveProperty('status', 'CONFIRMED');
+      expect(confirmed.body).toHaveProperty('service');
+      expect(confirmed.body).toHaveProperty('customer');
+
+      await patchStatus(token, appt.id, 'COMPLETED').expect(200);
+      expect(await statusInDb(appt.id)).toBe('COMPLETED');
+
+      // concluído é um estado final: não pode ser cancelado
+      await patchStatus(token, appt.id, 'CANCELLED').expect(400);
+      expect(await statusInDb(appt.id)).toBe('COMPLETED');
+    });
+
+    test('allows completing a pending appointment directly', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const appt = await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: new Date(nextMonday()),
+      });
+
+      await patchStatus(token, appt.id, 'COMPLETED').expect(200);
+
+      expect(await statusInDb(appt.id)).toBe('COMPLETED');
+    });
+
+    test('frees the time slot after cancelling, so it can be booked again', async () => {
+      const { serviceId, token } = await setupBarbershop(app);
+      const body = {
+        serviceId,
+        customerName: 'Will',
+        customerPhone: '81998312549',
+        date: nextMonday(),
+      };
+
+      const first = await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body)
+        .expect(201);
+
+      // enquanto está ativo, o horário está ocupado
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body)
+        .expect(409);
+
+      const { id } = first.body as { id: string };
+      await patchStatus(token, id, 'CANCELLED').expect(200);
+
+      // depois de cancelado, o mesmo horário volta a aceitar agendamento
+      await request(app.getHttpServer())
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send(body)
+        .expect(201);
+
+      expect(await prisma.appointment.count()).toBe(2);
+      expect(
+        await prisma.appointment.count({ where: { status: 'CANCELLED' } }),
+      ).toBe(1);
+    });
+  });
 });
