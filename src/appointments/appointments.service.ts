@@ -55,7 +55,10 @@ export class AppointmentsService {
   private resolveStartOfDay(from?: string): Date {
     const start = from ? new Date(`${from}T00:00:00.000Z`) : barbershopNow();
 
-    if (Number.isNaN(start.getTime())) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      (from && start.toISOString().slice(0, 10) !== from)
+    ) {
       throw new BadRequestException('Invalid date');
     }
 

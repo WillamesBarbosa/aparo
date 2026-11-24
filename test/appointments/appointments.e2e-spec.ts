@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { DayOfWeek } from '@prisma/client';
 import Redis from 'ioredis';
 import { AppModule } from 'src/app.module';
 import { barbershopNow } from 'src/common/helpers/barbershopNow';
@@ -15,7 +16,15 @@ describe('Appointments E2E', () => {
   let prisma: PrismaService;
   let redis: Redis;
   const uuidFake = '639b9b43-428b-4dcd-a8d8-477eeb3d639f';
-
+  const DAYS: DayOfWeek[] = [
+    'SUNDAY',
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+    'SATURDAY',
+  ];
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -565,6 +574,63 @@ describe('Appointments E2E', () => {
     test('Should return 401 if not authenticated', async () => {
       await request(app.getHttpServer()).get('/api/appointments').expect(401);
     });
+
+    test('uses the barbershop today when date is omitted', async () => {
+      const { barbershopId, serviceId } = await setupBarbershop(app);
+      const expected = barbershopNow();
+      expected.setUTCHours(0, 0, 0, 0);
+
+      const response = await request(app.getHttpServer())
+        .get(
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}`,
+        )
+        .expect(200);
+
+      expect(response.body).toHaveProperty('date', expected.toISOString());
+    });
+
+    test('returns 400 when date is invalid', async () => {
+      const { barbershopId, serviceId } = await setupBarbershop(app);
+
+      await request(app.getHttpServer())
+        .get(
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}&date=abc`,
+        )
+        .expect(400);
+    });
+
+    test('removes slots that already passed when the day is today', async () => {
+      const { barbershopId, serviceId } = await setupBarbershop(app);
+      const now = barbershopNow();
+      const dayOfWeek = DAYS[now.getUTCDay()];
+
+      // expediente do dia todo, para o teste valer em qualquer horário
+      await prisma.schedule.deleteMany({ where: { barbershopId, dayOfWeek } });
+      await prisma.schedule.create({
+        data: {
+          barbershopId,
+          dayOfWeek,
+          openTime: '00:00',
+          closeTime: '23:59',
+          active: true,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(
+          `/api/appointments/available?barbershopId=${barbershopId}&serviceId=${serviceId}`,
+        )
+        .expect(200);
+
+      const body = response.body as { slots: string[] };
+      const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+
+      expect(body.slots).not.toContain('00:00');
+      body.slots.forEach((slot) => {
+        const [h, m] = slot.split(':').map(Number);
+        expect(h * 60 + m).toBeGreaterThan(nowMinutes);
+      });
+    });
   });
 
   describe('GET /api/appointments/week', () => {
@@ -605,6 +671,40 @@ describe('Appointments E2E', () => {
         .get('/api/appointments/week')
         .expect(401);
     });
+
+    test('returns 7 days starting at from', async () => {
+      const { barbershopId, serviceId, token } = await setupBarbershop(app);
+      const monday = new Date(nextMonday(9));
+      const at = (days: number) => {
+        const d = new Date(monday);
+        d.setUTCDate(d.getUTCDate() + days);
+        return d;
+      };
+
+      await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: at(0),
+      });
+      await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: at(6),
+      });
+      await createAppointmentDirect(prisma, {
+        barbershopId,
+        serviceId,
+        date: at(7),
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/appointments/week?from=${monday.toISOString().slice(0, 10)}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body).toHaveLength(2); // dia 0 e dia 6; o dia 7 fica de fora
+    });
+
     test.each(['abc', '2026-9-7', '2026-02-31'])(
       'returns 400 for invalid from (%s)',
       async (from) => {
