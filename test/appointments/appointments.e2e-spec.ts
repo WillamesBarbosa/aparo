@@ -605,5 +605,16 @@ describe('Appointments E2E', () => {
         .get('/api/appointments/week')
         .expect(401);
     });
+    test.each(['abc', '2026-9-7', '2026-02-31'])(
+      'returns 400 for invalid from (%s)',
+      async (from) => {
+        const { token } = await setupBarbershop(app);
+
+        await request(app.getHttpServer())
+          .get(`/api/appointments/week?from=${from}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(400);
+      },
+    );
   });
 });
