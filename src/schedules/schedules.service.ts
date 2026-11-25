@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { DayOfWeek } from '@prisma/client';
@@ -8,6 +12,13 @@ export class SchedulesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(barbershopId: string, dto: CreateScheduleDto) {
+    const [oh, om] = dto.openTime.split(':').map(Number);
+    const [ch, cm] = dto.closeTime.split(':').map(Number);
+
+    if (oh * 60 + om >= ch * 60 + cm) {
+      throw new BadRequestException('openTime must be before closeTime');
+    }
+
     return this.prisma.schedule.upsert({
       where: {
         barbershopId_dayOfWeek: {

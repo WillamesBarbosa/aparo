@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   Post,
   Request,
   UseGuards,
@@ -41,7 +42,7 @@ export class SchedulesController {
   @Delete(':dayOfWeek')
   async delete(
     @Request() req: AuthenticatedRequest,
-    @Param('dayOfWeek') dayOfWeek: DayOfWeek,
+    @Param('dayOfWeek', new ParseEnumPipe(DayOfWeek)) dayOfWeek: DayOfWeek,
   ) {
     const barbershop = await this.barbershopsServices.findByUserId(req.user.id);
     return this.schedulesService.delete(barbershop.id, dayOfWeek);
